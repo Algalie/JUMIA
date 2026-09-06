@@ -1,4 +1,3 @@
-
 """
 WSGI entry point for Render deployment
 """
@@ -15,6 +14,7 @@ from app import app, db, seed_admin
 with app.app_context():
     db.create_all()
     seed_admin()
+    print("Database initialized with SQLite")
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
