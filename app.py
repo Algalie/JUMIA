@@ -438,7 +438,7 @@ def after_request(response):
 def uploaded_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
-# ============ AUTH ============
+# ============ AUTH ROUTES ============
 @app.route('/api/auth/login', methods=['POST'])
 def login():
     data = request.get_json()
@@ -455,8 +455,20 @@ def login():
 @app.route('/api/auth/register', methods=['POST'])
 def register():
     data = request.get_json()
+    
+    # Validate required fields
+    if not data.get('email'):
+        return jsonify({'error': 'Email is required'}), 400
+    if not data.get('password'):
+        return jsonify({'error': 'Password is required'}), 400
+    if not data.get('first_name'):
+        return jsonify({'error': 'First name is required'}), 400
+    
+    # Check if email already exists
     if User.query.filter_by(email=data['email'].lower()).first():
         return jsonify({'error': 'Email already registered'}), 409
+    
+    # Create user
     user = User(
         email=data['email'].lower(),
         first_name=data.get('first_name', ''),
@@ -467,6 +479,8 @@ def register():
     user.set_password(data['password'])
     db.session.add(user)
     db.session.flush()
+    
+    # Create vendor profile for the user
     vendor = Vendor(
         user_id=user.id,
         business_name=f"{user.first_name}'s Store",
@@ -475,7 +489,8 @@ def register():
     )
     db.session.add(vendor)
     db.session.commit()
-    return jsonify({'message': 'User created', 'user': user.to_dict()}), 201
+    
+    return jsonify({'message': 'User created successfully', 'user': user.to_dict()}), 201
 
 @app.route('/api/auth/profile', methods=['GET'])
 @token_required
@@ -483,7 +498,7 @@ def get_profile():
     user = User.query.get(request.current_user['user_id'])
     return jsonify(user.to_dict()) if user else (jsonify({'error': 'Not found'}), 404)
 
-# ============ PRODUCTS ============
+# ============ PRODUCT ROUTES ============
 @app.route('/api/products/', methods=['GET'])
 def get_products():
     page = request.args.get('page', 1, type=int)
@@ -621,7 +636,7 @@ def create_category():
     db.session.commit()
     return jsonify(cat.to_dict()), 201
 
-# ============ ORDERS ============
+# ============ ORDER ROUTES ============
 @app.route('/api/orders/', methods=['GET', 'POST'])
 @token_required
 def handle_orders():
@@ -788,7 +803,7 @@ def my_orders():
     orders = Order.query.filter_by(customer_email=email).order_by(Order.created_at.desc()).all()
     return jsonify({'orders': [o.to_dict() for o in orders]})
 
-# ============ CUSTOMERS ============
+# ============ CUSTOMER ROUTES ============
 @app.route('/api/customers/', methods=['GET'])
 @token_required
 def get_customers():
@@ -812,13 +827,13 @@ def get_customers():
         'current_page': customers.page
     })
 
-# ============ VENDORS ============
+# ============ VENDOR ROUTES ============
 @app.route('/api/vendors/', methods=['GET'])
 @token_required
 def get_vendors():
     return jsonify([v.to_dict() for v in Vendor.query.all()])
 
-# ============ INVENTORY ============
+# ============ INVENTORY ROUTES ============
 @app.route('/api/inventory/', methods=['GET'])
 @token_required
 def get_inventory():
@@ -843,7 +858,7 @@ def get_inventory():
         'current_page': inv.page
     })
 
-# ============ ANALYTICS ============
+# ============ ANALYTICS ROUTES ============
 @app.route('/api/analytics/dashboard', methods=['GET'])
 @token_required
 def dashboard():
@@ -874,7 +889,7 @@ def dashboard():
         'total_revenue': float(tr)
     }})
 
-# ============ HEALTH ============
+# ============ HEALTH ROUTE ============
 @app.route('/api/health', methods=['GET'])
 def health():
     return jsonify({
